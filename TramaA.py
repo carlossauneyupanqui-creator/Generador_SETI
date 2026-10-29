@@ -631,29 +631,32 @@ def main():
     st.sidebar.markdown("### ⚙️ **SETI-PRES**")
     st.sidebar.markdown("**SUSALUD - Módulo de Tramas**")
 
-    # Tarjeta de información fijada exclusivamente en la base inferior
-    info_card = st.sidebar.container()
-    with info_card:
-        st.markdown(
-            """
-            <style>
-                [data-testid="stSidebar"] {
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between;
-                }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-    
-    # Bloque posicionado al fondo usando side="bottom"
-    st.sidebar.markdown("<div style='margin-top: auto;'></div>", unsafe_allow_html=True)
+    # CSS limpio para fijar los elementos y mandar el último bloque al fondo
+    st.sidebar.markdown(
+        """
+        <style>
+            section[data-testid="stSidebar"] > div:nth-child(1) {
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+            }
+            .sidebar-footer {
+                margin-top: auto;
+                padding-bottom: 30px;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Bloque inferior que se anclará perfectamente abajo
+    st.sidebar.markdown('<div class="sidebar-footer">', unsafe_allow_html=True)
     st.sidebar.info(
         "Elaborado por: Ingº Carlos Sauñe Yupanqui\n"
         "CIP 209420\n"
         "Versión: 2026.1 - En Linea"
     )
+    st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
     # 1. Parámetros del Envío
     st.subheader("1. Parámetros del Envío")
