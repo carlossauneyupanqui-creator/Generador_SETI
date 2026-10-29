@@ -633,9 +633,9 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.info(
         "Elaborado por el Ingº Sistemas"
-        "\nCarlos Sauñe Yupanqui"
-        "\nCIP 209420"
-        "\nEstado: En línea"
+        "\nCarlos Sauñe Yupanqui\n"
+        "\nCIP 209420\n"
+        "\nEstado: En línea\n"
         "\nVersión 2026.1"
     )
 
