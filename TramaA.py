@@ -627,18 +627,32 @@ def main():
     st.title("🏥 Sistema SETI-PRES - Consola Única SUSALUD")
     st.markdown("---")
 
-   # Sidebar con información del creador posicionada en la base
+  # Sidebar con información del creador fijada en la base
     st.sidebar.markdown("### ⚙️ **SETI-PRES**")
     st.sidebar.markdown("**SUSALUD - Módulo de Tramas**")
-    
-    # Creamos un espacio vertical para empujar la tarjeta hacia la base
-    st.sidebar.markdown("<br>" * 12, unsafe_allow_html=True)
-    
-    st.sidebar.info(
-        "Elaborado por: Ingº Carlos Sauñe Yupanqui\n"
-        "CIP 209420\n"
-        "Versión: 2026.1 - En Linea"
+
+    # Contenedor inferior absoluto para la base de la barra lateral
+    st.sidebar.markdown(
+        """
+        <style>
+            [data-testid="stSidebar"] {
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
     )
+
+    # Bloque que se irá abajo del todo
+    with st.sidebar:
+        st.markdown("<div style='margin-top: 150px;'></div>", unsafe_allow_html=True)
+        st.info(
+            "Elaborado por: Ingº Carlos Sauñe Yupanqui\n"
+            "CIP 209420\n"
+            "Versión: 2026.1 - En Linea"
+        )
 
     # 1. Parámetros del Envío
     st.subheader("1. Parámetros del Envío")
