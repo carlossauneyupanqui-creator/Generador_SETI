@@ -631,25 +631,25 @@ def main():
     st.sidebar.markdown("### ⚙️ **SETI-PRES**")
     st.sidebar.markdown("**SUSALUD - Módulo de Tramas**")
 
-    # CSS limpio para fijar los elementos y mandar el último bloque al fondo
+    # CSS ajustado para bajarlo ese poquito que falta hasta la base
     st.sidebar.markdown(
         """
         <style>
             section[data-testid="stSidebar"] > div:nth-child(1) {
                 display: flex;
                 flex-direction: column;
-                height: 100vh;
+                height: 92vh;
             }
             .sidebar-footer {
                 margin-top: auto;
-                padding-bottom: 30px;
+                padding-bottom: 5px;
             }
         </style>
         """,
         unsafe_allow_html=True
     )
 
-    # Bloque inferior que se anclará perfectamente abajo
+    # Bloque inferior que se apoyará justo en la base
     st.sidebar.markdown('<div class="sidebar-footer">', unsafe_allow_html=True)
     st.sidebar.info(
         "Elaborado por: Ingº Carlos Sauñe Yupanqui\n"
@@ -658,6 +658,7 @@ def main():
     )
     st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
+    
     # 1. Parámetros del Envío
     st.subheader("1. Parámetros del Envío")
     col1, col2, col3 = st.columns(3)
