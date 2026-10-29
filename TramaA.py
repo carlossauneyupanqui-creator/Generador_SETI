@@ -495,7 +495,7 @@ def abrir_modal_tabla_a(codigos_validos):
 # =========================================================
 def main():
     # -----------------------------------------------------
-    # BARRA LATERAL CON DISEÑO IDÉntICO DE ESCRITORIO
+    # BARRA LATERAL CON DISEÑO IDÉNTICO DE ESCRITORIO
     # -----------------------------------------------------
     st.sidebar.markdown("### ⚙️ **SETI-PRES**")
     st.sidebar.markdown("**SUSALUD - Módulo de Tramas**")
@@ -510,19 +510,22 @@ def main():
         else:
             st.sidebar.error("Ingrese al menos un código RENIPRESS.")
 
-    # CSS para forzar el pie de página exactamente en la base inferior con diseño exacto
+    # CSS optimizado para forzar el anclaje absoluto en la base de la barra lateral
     st.sidebar.markdown(
         """
         <style>
-            section[data-testid="stSidebar"] > div:nth-child(1) {
+            section[data-testid="stSidebar"] {
                 display: flex;
                 flex-direction: column;
-                height: 100vh;
-                box-sizing: border-box;
+            }
+            section[data-testid="stSidebar"] > div {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
             }
             .sidebar-footer {
                 margin-top: auto;
-                padding-bottom: 20px;
+                padding-bottom: 10px;
             }
             .custom-card {
                 background-color: #1d4ed8;
@@ -539,7 +542,7 @@ def main():
         unsafe_allow_html=True
     )
 
-    # Tarjeta idéntica a la versión de escritorio
+    # Tarjeta idéntica anclada al fondo
     st.sidebar.markdown(
         """
         <div class="sidebar-footer">
