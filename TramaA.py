@@ -627,27 +627,28 @@ def main():
     st.title("🏥 Sistema SETI-PRES - Consola Única SUSALUD")
     st.markdown("---")
 
-  # Sidebar con información del creador fijada al fondo
+  # Título y subtítulo arriba en la barra lateral
     st.sidebar.markdown("### ⚙️ **SETI-PRES**")
     st.sidebar.markdown("**SUSALUD - Módulo de Tramas**")
 
-    # Inyección de CSS para empujar el contenido de la barra lateral al fondo
-    st.sidebar.markdown(
-        """
-        <style>
-            [data-testid="stSidebar"] > div:first-child {
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                height: 100%;
-            }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-    # Bloque posicionado al final
-    st.sidebar.markdown("<div style='height: 50px;'></div>", unsafe_allow_html=True)
+    # Tarjeta de información fijada exclusivamente en la base inferior
+    info_card = st.sidebar.container()
+    with info_card:
+        st.markdown(
+            """
+            <style>
+                [data-testid="stSidebar"] {
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+    
+    # Bloque posicionado al fondo usando side="bottom"
+    st.sidebar.markdown("<div style='margin-top: auto;'></div>", unsafe_allow_html=True)
     st.sidebar.info(
         "Elaborado por: Ingº Carlos Sauñe Yupanqui\n"
         "CIP 209420\n"
