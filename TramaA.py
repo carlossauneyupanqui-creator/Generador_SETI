@@ -633,10 +633,10 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.info(
         "Elaborado por el Ingº Sistemas"
-        "Carlos Sauñe Yupanqui\n"
-        "CIP 209420\n"
-        "Estado: En línea\n"
-        "Versión 2026.1"
+        "\nCarlos Sauñe Yupanqui"
+        "\nCIP 209420"
+        "\nEstado: En línea"
+        "\nVersión 2026.1"
     )
 
     # 1. Parámetros del Envío
