@@ -1,14 +1,16 @@
 import os
 import re
 import pandas as pd
+import streamlit as st
 
-# Importación de la librería UI Moderna CustomTkinter
-import customtkinter as ctk
-from tkinter import filedialog, messagebox, ttk
-
-# Configuración del Tema SETI-PRES
-ctk.set_appearance_mode("Light")
-ctk.set_default_color_theme("blue")
+# =========================================================
+# CONFIGURACIÓN DE LA PÁGINA STREAMLIT
+# =========================================================
+st.set_page_config(
+    page_title="Sistema SETI-PRES - Consola SUSALUD",
+    page_icon="🏥",
+    layout="wide"
+)
 
 # =========================================================
 # VALORES POR DEFECTO PARA LA TABLA A (RECURSOS)
@@ -108,7 +110,6 @@ def estandarizar_cie10(codigo):
         return ""
     c = str(codigo).strip().upper().replace(".", "")
     
-    # Unificar variantes extendidas (Z298, Z2982, etc.) hacia el código oficial SUSALUD Z29.8
     if c.startswith("Z298"):
         return "Z29.8"
         
@@ -127,11 +128,12 @@ def es_cie10_morbilidad(codigo):
     return bool(re.match(r"^[A-Z][0-9A-Z]{3}$", c_limpio))
 
 
-def cargar_y_normalizar_excel(ruta_excel):
+def cargar_y_normalizar_excel(file_buffer):
     try:
-        df_raw = pd.read_excel(ruta_excel, header=None)
+        df_raw = pd.read_excel(file_buffer, header=None)
     except Exception:
-        df_raw = pd.read_excel(ruta_excel, engine="xlrd", header=None)
+        file_buffer.seek(0)
+        df_raw = pd.read_excel(file_buffer, engine="xlrd", header=None)
 
     header_row = 0
     keywords_cabecera = [
@@ -160,9 +162,11 @@ def cargar_y_normalizar_excel(ruta_excel):
             break
 
     try:
-        df = pd.read_excel(ruta_excel, header=header_row)
+        file_buffer.seek(0)
+        df = pd.read_excel(file_buffer, header=header_row)
     except Exception:
-        df = pd.read_excel(ruta_excel, engine="xlrd", header=header_row)
+        file_buffer.seek(0)
+        df = pd.read_excel(file_buffer, engine="xlrd", header=header_row)
 
     df.columns = [str(col).strip().upper() for col in df.columns]
 
@@ -250,7 +254,7 @@ def cargar_y_normalizar_excel(ruta_excel):
 
 
 # ---------------------------------------------------------
-# LÓGICA DE GENERACIÓN DE TRAMAS (FORMATO SUSALUD REGULARIZADO)
+# LÓGICA DE GENERACIÓN DE TRAMAS
 # ---------------------------------------------------------
 def procesar_tabla_a(codigos_renipress_lista, ipress_matriz, periodo):
     lineas_a = []
@@ -345,8 +349,6 @@ def procesar_tabla_b1(df_base, ipress_matriz, periodo):
 
 def procesar_tabla_b2(df_base, ipress_matriz, periodo):
     df_b2 = df_base[df_base["CIE_PROC"].apply(es_cie10_morbilidad)].copy()
-    
-    # Excluir explícitamente los códigos CIE-10 que inician con la letra 'C'
     df_b2 = df_b2[~df_b2["CIE_PROC"].str.startswith("C")]
     
     ipress_matriz_fmt = str(ipress_matriz).strip().zfill(8)
@@ -467,7 +469,7 @@ def procesar_tabla_c2(df_base, ipress_matriz, periodo, solo_filtrar_ups=True):
 
     if solo_filtrar_ups and "UPS" in df.columns:
         condicion = df["UPS"].astype(str).str.contains(
-            " |301601", regex=True
+            "300303|301601", regex=True
         )
         df_emg = df[condicion].copy()
     else:
@@ -545,7 +547,7 @@ def procesar_tabla_d2(codigos_renipress_lista, ipress_matriz, periodo):
     return lineas_d2
 
 
-def procesar_tabla_e(codigos_renipress_lista, ipress_matriz, periodo, df_principal=None, ruta_seem=None):
+def procesar_tabla_e(codigos_renipress_lista, ipress_matriz, periodo, df_principal=None, file_seem=None):
     lineas_e = []
     ipress_matriz_fmt = str(ipress_matriz).strip().zfill(8)
 
@@ -554,12 +556,13 @@ def procesar_tabla_e(codigos_renipress_lista, ipress_matriz, periodo, df_princip
     )
 
     df_fuente = None
-    if ruta_seem and os.path.exists(ruta_seem):
+    if file_seem is not None:
         try:
-            if ruta_seem.endswith((".xlsx", ".xls")):
-                df_fuente = pd.read_excel(ruta_seem)
+            if file_seem.name.endswith((".xlsx", ".xls")):
+                df_fuente = pd.read_excel(file_seem)
             else:
-                df_fuente = pd.read_csv(ruta_seem, sep=None, engine="python", encoding="latin-1", on_bad_lines="skip")
+                file_seem.seek(0)
+                df_fuente = pd.read_csv(file_seem, sep=None, engine="python", encoding="latin-1", on_bad_lines="skip")
             df_fuente.columns = [str(c).upper().strip() for c in df_fuente.columns]
         except Exception:
             df_fuente = None
@@ -618,381 +621,77 @@ def procesar_tabla_e(codigos_renipress_lista, ipress_matriz, periodo, df_princip
 
 
 # ---------------------------------------------------------
-# VENTANA SECUNDARIA EDITAR TABLA A
+# INTERFAZ WEB PRINCIPAL (STREAMLIT)
 # ---------------------------------------------------------
-class VentanaFormularioTablaA(ctk.CTkToplevel):
+def main():
+    st.title("🏥 Sistema SETI-PRES - Consola Única SUSALUD")
+    st.markdown("---")
 
-    def __init__(self, parent, lista_renipress):
-        super().__init__(parent)
-        self.title("Configuración de Recursos - Tabla A")
-        self.geometry("580x680")
-        self.resizable(False, False)
-        self.transient(parent)
-        self.grab_set()
+    # Sidebar con información del creador
+    st.sidebar.markdown("### ⚙️ **SETI-PRES**")
+    st.sidebar.markdown("**SUSALUD - Módulo de Tramas**")
+    st.sidebar.markdown("---")
+    st.sidebar.info(
+        "Elaborado por el Ingº Sistemas\n"
+        "**Carlos Sauñe Yupanqui**\n"
+        "CIP 209420\n"
+        "Estado: En línea\n"
+        "Versión 2026.1"
+    )
 
-        self.lista_renipress = lista_renipress
-        self.entries = {}
-
-        self._crear_widgets()
-
-    def _crear_widgets(self):
-        lbl_titulo = ctk.CTkLabel(
-            self,
-            text="RECURSOS EN SALUD (TABLA A)",
-            font=ctk.CTkFont(size=16, weight="bold"),
-            text_color="#1E3A8A",
+    # 1. Parámetros del Envío
+    st.subheader("1. Parámetros del Envío")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        periodo = st.text_input("Periodo (AAAAMM):", value="202607")
+    with col2:
+        ipress_decl = st.text_input("UGIPRESS Matriz:", value="00003554")
+    with col3:
+        ipress_lista_str = st.text_input(
+            "RENIPRESS a Incluir:",
+            value="00003554, 00003555, 00003556, 00003557, 00003558, 00006907"
         )
-        lbl_titulo.pack(pady=(15, 5))
 
-        frame_sel = ctk.CTkFrame(self, fg_color="transparent")
-        frame_sel.pack(fill="x", padx=20, pady=5)
+    codigos_validos = [limpiar_codigo_renipress(i) for i in ipress_lista_str.split(",") if limpiar_codigo_renipress(i)]
 
-        ctk.CTkLabel(
-            frame_sel, text="IPRESS Seleccionada:", font=ctk.CTkFont(weight="bold")
-        ).pack(side="left", padx=(0, 10))
+    # 2. Origen de Datos
+    st.subheader("2. Origen de Datos (Excel HIS / Partos)")
+    archivo_subido = st.file_uploader("Seleccione o arrastre el archivo Excel principal del HIS:", type=["xlsx", "xls"])
+    archivo_seem = st.file_uploader("Opcional: Archivo SEEM / Partos independiente:", type=["xlsx", "xls", "csv", "txt"])
 
-        self.combo_reni = ctk.CTkOptionMenu(
-            frame_sel,
-            values=self.lista_renipress,
-            command=self._cargar_datos_ipress,
-            fg_color="#1E3A8A",
-            button_color="#1D4ED8",
-        )
-        self.combo_reni.pack(side="left")
+    col_chk1, col_chk2 = st.columns(2)
+    with col_chk1:
+        var_deduplicar = st.checkbox("Descartar duplicados en B2 por Cita/Atención o Paciente", value=True)
+    with col_chk2:
+        var_modo_emergencia = st.checkbox("Generar C1 y C2 con TODO el Excel (Exclusivo de Emergencias)", value=False)
 
-        frame_scroll = ctk.CTkScrollableFrame(self, label_text="Campos de Recursos Físicos y Personal")
-        frame_scroll.pack(fill="both", expand=True, padx=20, pady=10)
+    st.markdown("---")
 
-        for idx, campo in enumerate(CAMPOS_RECURSOS):
-            row_frame = ctk.CTkFrame(frame_scroll, fg_color="transparent")
-            row_frame.pack(fill="x", pady=4, padx=5)
-
-            lbl = ctk.CTkLabel(row_frame, text=f"{campo}:", anchor="w", width=220)
-            lbl.pack(side="left")
-
-            ent = ctk.CTkEntry(row_frame, width=100, justify="center")
-            ent.pack(side="right", padx=10)
-            self.entries[idx] = ent
-
-        btn_guardar_ipress = ctk.CTkButton(
-            self,
-            text="Guardar Cambios IPRESS",
-            fg_color="#0D9488",
-            hover_color="#0F766E",
-            font=ctk.CTkFont(weight="bold"),
-            command=self._guardar_ipress_actual,
-        )
-        btn_guardar_ipress.pack(pady=15)
-
-        if self.lista_renipress:
-            self.combo_reni.set(self.lista_renipress[0])
-            self._cargar_datos_ipress(self.lista_renipress[0])
-
-    def _cargar_datos_ipress(self, choice=None):
-        reni = self.combo_reni.get().strip()
-        valores = RECURSOS_BASE.get(reni, [0] * 16)
-
-        for idx, ent in self.entries.items():
-            ent.delete(0, "end")
-            ent.insert(0, str(valores[idx]))
-
-    def _guardar_ipress_actual(self):
-        reni = self.combo_reni.get().strip()
-        nuevos_valores = []
-
-        try:
-            for idx in range(16):
-                val = int(self.entries[idx].get().strip())
-                nuevos_valores.append(val)
-
-            RECURSOS_BASE[reni] = nuevos_valores
-            messagebox.showinfo(
-                "Guardado",
-                f"Recursos actualizados correctamente para la IPRESS {reni}.",
-            )
-        except ValueError:
-            messagebox.showerror(
-                "Error", "Todos los valores deben ser números enteros."
-            )
-
-
-# ---------------------------------------------------------
-# INTERFAZ GRÁFICA PRINCIPAL
-# ---------------------------------------------------------
-class ConsolaSetiSusalud(ctk.CTk):
-
-    def __init__(self):
-        super().__init__()
-        self.title("Sistema SETI-PRES - Consola Única SUSALUD")
-        self.geometry("980x760")
-        self.minsize(900, 700)
-
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
-
-        self._crear_sidebar()
-        self._crear_panel_principal()
-
-    def _crear_sidebar(self):
-        self.sidebar = ctk.CTkFrame(self, width=220, corner_radius=0, fg_color="#1E3A8A")
-        self.sidebar.grid(row=0, column=0, sticky="nsew")
-
-        lbl_logo = ctk.CTkLabel(
-            self.sidebar,
-            text="SETI-PRES",
-            font=ctk.CTkFont(size=22, weight="bold"),
-            text_color="#FFFFFF",
-        )
-        lbl_logo.pack(pady=(25, 5))
-
-        lbl_sub = ctk.CTkLabel(
-            self.sidebar,
-            text="SUSALUD - Módulo de Tramas",
-            font=ctk.CTkFont(size=11),
-            text_color="#93C5FD",
-        )
-        lbl_sub.pack(pady=(0, 25))
-
-        btn_config = ctk.CTkButton(
-            self.sidebar,
-            text=" Configurar Tabla A",
-            fg_color="#3B82F6",
-            hover_color="#2563EB",
-            font=ctk.CTkFont(weight="bold"),
-            command=self.abrir_formulario_tabla_a,
-        )
-        btn_config.pack(padx=15, pady=10, fill="x")
-
-        info_card = ctk.CTkFrame(self.sidebar, fg_color="#1D4ED8", corner_radius=8)
-        info_card.pack(padx=15, pady=20, fill="x", side="bottom")
-
-        ctk.CTkLabel(
-            info_card,
-            text="Elaborado por el Ingº Sistemas\nCarlos Sauñe Yupanqui\nCIP 209420\nEstado: En linea\nVersión 2026.1",
-            font=ctk.CTkFont(size=11),
-            text_color="#FFFFFF",
-        ).pack(pady=10)
-
-    def _crear_panel_principal(self):
-        self.main_panel = ctk.CTkFrame(self, fg_color="#F8FAFC", corner_radius=0)
-        self.main_panel.grid(row=0, column=1, sticky="nsew", padx=15, pady=15)
-
-        self.main_panel.grid_rowconfigure(0, weight=0)
-        self.main_panel.grid_rowconfigure(1, weight=0)
-        self.main_panel.grid_rowconfigure(2, weight=0)
-        self.main_panel.grid_rowconfigure(3, weight=1)
-        self.main_panel.grid_rowconfigure(4, weight=0)
-        self.main_panel.grid_columnconfigure(0, weight=1)
-
-        lbl_header = ctk.CTkLabel(
-            self.main_panel,
-            text="Consola Integrada de Generación de Tramas",
-            font=ctk.CTkFont(size=18, weight="bold"),
-            text_color="#0F172A",
-        )
-        lbl_header.grid(row=0, column=0, sticky="w", padx=10, pady=(5, 10))
-
-        # 1. Card Parámetros Generales
-        card_param = ctk.CTkFrame(self.main_panel, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E2E8F0")
-        card_param.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
-
-        lbl_sec1 = ctk.CTkLabel(
-            card_param, text="1. Parámetros del Envío", font=ctk.CTkFont(weight="bold"), text_color="#1E3A8A"
-        )
-        lbl_sec1.grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=(8, 4))
-
-        ctk.CTkLabel(card_param, text="Periodo (AAAAMM):").grid(row=1, column=0, sticky="w", padx=15, pady=3)
-        self.txt_periodo = ctk.CTkEntry(card_param, width=150)
-        self.txt_periodo.insert(0, "202607")
-        self.txt_periodo.grid(row=1, column=1, sticky="w", padx=10, pady=3)
-
-        ctk.CTkLabel(card_param, text="UGIPRESS Matriz:").grid(row=2, column=0, sticky="w", padx=15, pady=3)
-        self.txt_ipress_decl = ctk.CTkEntry(card_param, width=150)
-        self.txt_ipress_decl.insert(0, "00003554")
-        self.txt_ipress_decl.grid(row=2, column=1, sticky="w", padx=10, pady=3)
-
-        ctk.CTkLabel(card_param, text="RENIPRESS a Incluir:").grid(row=3, column=0, sticky="w", padx=15, pady=3)
-        self.txt_ipress_lista = ctk.CTkEntry(card_param, width=420)
-        self.txt_ipress_lista.insert(
-            0, "00003554, 00003555, 00003556, 00003557, 00003558, 00006907"
-        )
-        self.txt_ipress_lista.grid(row=3, column=1, sticky="w", padx=10, pady=(3, 10))
-
-        # 2. Card Origen de Datos
-        card_file = ctk.CTkFrame(self.main_panel, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E2E8F0")
-        card_file.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
-
-        lbl_sec2 = ctk.CTkLabel(
-            card_file, text="2. Origen de Datos (Excel HIS / Partos)", font=ctk.CTkFont(weight="bold"), text_color="#1E3A8A"
-        )
-        lbl_sec2.pack(anchor="w", padx=15, pady=(8, 4))
-
-        f_input_file = ctk.CTkFrame(card_file, fg_color="transparent")
-        f_input_file.pack(fill="x", padx=15, pady=3)
-
-        self.txt_ruta = ctk.CTkEntry(f_input_file, placeholder_text="Seleccione la ruta del archivo Excel principal...")
-        self.txt_ruta.pack(side="left", expand=True, fill="x", padx=(0, 10))
-
-        btn_buscar = ctk.CTkButton(
-            f_input_file, text="Buscar Excel", fg_color="#64748B", hover_color="#475569", command=self.buscar_excel
-        )
-        btn_buscar.pack(side="right")
-
-        f_seem_file = ctk.CTkFrame(card_file, fg_color="transparent")
-        f_seem_file.pack(fill="x", padx=15, pady=3)
-
-        self.txt_ruta_seem = ctk.CTkEntry(f_seem_file, placeholder_text="Opcional: Archivo SEEM / Partos independiente...")
-        self.txt_ruta_seem.pack(side="left", expand=True, fill="x", padx=(0, 10))
-
-        btn_buscar_seem = ctk.CTkButton(
-            f_seem_file, text="Buscar SEEM", fg_color="#64748B", hover_color="#475569", command=self.buscar_seem
-        )
-        btn_buscar_seem.pack(side="right")
-
-        self.var_deduplicar = ctk.BooleanVar(value=True)
-        chk_dedup = ctk.CTkCheckBox(
-            card_file,
-            text="Descartar duplicados en B2 por Cita/Atención (IDCITA) o Paciente",
-            variable=self.var_deduplicar,
-            font=ctk.CTkFont(size=12),
-        )
-        chk_dedup.pack(anchor="w", padx=15, pady=3)
-
-        self.var_modo_emergencia = ctk.BooleanVar(value=False)
-        chk_emg = ctk.CTkCheckBox(
-            card_file,
-            text="Generar C1 y C2 con TODO el Excel (Marcar si el Excel es Exclusivo de Emergencias)",
-            variable=self.var_modo_emergencia,
-            font=ctk.CTkFont(size=12),
-            text_color="#B91C1C",
-        )
-        chk_emg.pack(anchor="w", padx=15, pady=(3, 10))
-
-        # 3. Tabview Visualizador de Salidas (A a E - Se removió la pestaña F)
-        self.tabview = ctk.CTkTabview(self.main_panel)
-        self.tabview.grid(row=3, column=0, sticky="nsew", padx=10, pady=5)
-
-        self.tab_a = self.tabview.add("Tabla A")
-        self.tab_b1 = self.tabview.add("Tabla B1")
-        self.tab_b2 = self.tabview.add("Tabla B2")
-        self.tab_c1 = self.tabview.add("Tabla C1")
-        self.tab_c2 = self.tabview.add("Tabla C2")
-        self.tab_d1 = self.tabview.add("Tabla D1")
-        self.tab_d2 = self.tabview.add("Tabla D2")
-        self.tab_e = self.tabview.add("Tabla E")
-
-        self.txt_prev_a = self._crear_caja_previsualizacion(self.tab_a)
-        self.txt_prev_b1 = self._crear_caja_previsualizacion(self.tab_b1)
-        self.txt_prev_b2 = self._crear_caja_previsualizacion(self.tab_b2)
-        self.txt_prev_c1 = self._crear_caja_previsualizacion(self.tab_c1)
-        self.txt_prev_c2 = self._crear_caja_previsualizacion(self.tab_c2)
-        self.txt_prev_d1 = self._crear_caja_previsualizacion(self.tab_d1)
-        self.txt_prev_d2 = self._crear_caja_previsualizacion(self.tab_d2)
-        self.txt_prev_e = self._crear_caja_previsualizacion(self.tab_e)
-
-        # 4. Botón de Procesamiento Principal
-        btn_procesar = ctk.CTkButton(
-            self.main_panel,
-            text="GENERAR PAQUETE DE TRAMAS SETI (A, B1, B2, C1, C2, D1, D2, E)",
-            fg_color="#0D9488",
-            hover_color="#0F766E",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            height=42,
-            command=self.procesar_paquete_completo,
-        )
-        btn_procesar.grid(row=4, column=0, sticky="ew", padx=10, pady=(5, 10))
-
-    def _crear_caja_previsualizacion(self, tab):
-        txt = ctk.CTkTextbox(tab, font=ctk.CTkFont(family="Consolas", size=11))
-        txt.pack(fill="both", expand=True)
-        return txt
-
-    def obtener_lista_renipress_limpia(self):
-        lista_raw = self.txt_ipress_lista.get().strip()
-        codigos = []
-        for item in lista_raw.split(","):
-            c = limpiar_codigo_renipress(item)
-            if c and c not in codigos:
-                codigos.append(c)
-        return codigos
-
-    def abrir_formulario_tabla_a(self):
-        codigos = self.obtener_lista_renipress_limpia()
-        if not codigos:
-            messagebox.showwarning(
-                "Atención", "Ingrese al menos un código RENIPRESS válido."
-            )
-            return
-        VentanaFormularioTablaA(self, codigos)
-
-    def buscar_excel(self):
-        archivo = filedialog.askopenfilename(
-            title="Seleccionar archivo Excel principal",
-            filetypes=[("Archivos de Excel", "*.xlsx *.xls")],
-        )
-        if archivo:
-            self.txt_ruta.delete(0, "end")
-            self.txt_ruta.insert(0, archivo)
-
-    def buscar_seem(self):
-        archivo = filedialog.askopenfilename(
-            title="Seleccionar archivo SEEM / Partos",
-            filetypes=[("Todos los archivos", "*.*"), ("Archivos Excel / CSV", "*.xlsx *.xls *.csv *.txt")],
-        )
-        if archivo:
-            self.txt_ruta_seem.delete(0, "end")
-            self.txt_ruta_seem.insert(0, archivo)
-
-    def procesar_paquete_completo(self):
-        ruta_excel = self.txt_ruta.get().strip()
-        ruta_seem = self.txt_ruta_seem.get().strip()
-        periodo = self.txt_periodo.get().strip()
-        ipress_decl = self.txt_ipress_decl.get().strip()
-        codigos_validos = self.obtener_lista_renipress_limpia()
-        set_codigos_validos = set(codigos_validos)
-
-        if not ruta_excel or not os.path.exists(ruta_excel):
-            messagebox.showwarning(
-                "Archivo requerido", "Seleccione un archivo de Excel válido."
-            )
+    if st.button("🚀 GENERAR PAQUETE DE TRAMAS SETI (A, B1, B2, C1, C2, D1, D2, E)", type="primary", use_container_width=True):
+        if not archivo_subido:
+            st.warning("⚠️ Por favor, cargue el archivo Excel principal del HIS antes de procesar.")
             return
 
         try:
-            df = cargar_y_normalizar_excel(ruta_excel)
+            df = cargar_y_normalizar_excel(archivo_subido)
 
-            cols_requeridas = [
-                "RENIPRESS",
-                "NUMDOC",
-                "SEXO",
-                "EDAD_Y",
-                "CODIGO",
-                "TIPODX",
-            ]
+            cols_requeridas = ["RENIPRESS", "NUMDOC", "SEXO", "EDAD_Y", "CODIGO", "TIPODX"]
             faltantes = [c for c in cols_requeridas if c not in df.columns]
 
             if faltantes:
-                columnas_detectadas = "\n".join(df.columns[:15])
-                messagebox.showerror(
-                    "Estructura no coincide",
-                    f"Faltan las siguientes columnas requeridas:\n{', '.join(faltantes)}\n\n"
-                    f"Columnas detectadas en tu Excel:\n{columnas_detectadas}",
-                )
+                st.error(f"❌ Estructura no coincide. Faltan las columnas: {', '.join(faltantes)}")
+                st.write("Columnas detectadas en tu archivo:", list(df.columns[:15]))
                 return
 
+            set_codigos_validos = set(codigos_validos)
             df_proc = df.copy()
 
-            df_proc["RENIPRESS_STR"] = df_proc["RENIPRESS"].apply(
-                limpiar_codigo_renipress
-            )
+            df_proc["RENIPRESS_STR"] = df_proc["RENIPRESS"].apply(limpiar_codigo_renipress)
             df_proc = df_proc[df_proc["RENIPRESS_STR"].isin(set_codigos_validos)]
 
-            # FILTRO ESTRICTO: Solo diagnósticos Definitivos (que inician con 'D')
+            # Filtro diagnóstico Definitivo (inicia con 'D')
             df_proc = df_proc[
-                df_proc["TIPODX"]
-                .astype(str)
-                .str.strip()
-                .str.upper()
-                .str.startswith("D")
+                df_proc["TIPODX"].astype(str).str.strip().str.upper().str.startswith("D")
             ]
 
             df_proc["SEXO_PROC"] = df_proc["SEXO"].apply(normalizar_sexo)
@@ -1002,141 +701,65 @@ class ConsolaSetiSusalud(ctk.CTk):
                 df_proc["IDCITA"] = df_proc["IDCITA"].astype(str).str.strip()
                 df_proc.loc[df_proc["IDCITA"].isin(["", "NAN", "NONE", "NAT", "0"]), "IDCITA"] = pd.NA
 
-            # Estandarizamos y unificamos el código CIE-10 (incluyendo Z298, Z2982 -> Z29.8)
             df_proc["CIE_PROC"] = df_proc["CODIGO"].apply(estandarizar_cie10)
-
-            df_proc["GRUPO_EDAD"] = df_proc["EDAD_Y"].apply(
-                obtener_grupo_etario
-            )
+            df_proc["GRUPO_EDAD"] = df_proc["EDAD_Y"].apply(obtener_grupo_etario)
             df_proc = df_proc[df_proc["GRUPO_EDAD"].notna()]
 
-            carpeta_salida = os.path.join(
-                os.path.dirname(ruta_excel), f"SETI_TRAMAS_{periodo}"
-            )
-            os.makedirs(carpeta_salida, exist_ok=True)
-
-            # ---------------------------------------------------------
-            # GENERACIÓN Y GUARDADO DE TRAMAS (CON NOMENCLATURA OFICIAL)
-            # ---------------------------------------------------------
             anio = periodo[:4]
             mes = periodo[4:]
 
-            # 1. Tabla A (Sufijo TAA0)
+            # Generación de líneas
             lineas_a = procesar_tabla_a(codigos_validos, ipress_decl, periodo)
-            ruta_a = os.path.join(
-                carpeta_salida, f"{ipress_decl}_{anio}_{mes}_TAA0.txt"
-            )
-            with open(ruta_a, "w", encoding="ansi", errors="replace") as f:
-                f.write("\n".join(lineas_a))
-
-            # 2. Tabla B1 (Sufijo TAB1)
             lineas_b1 = procesar_tabla_b1(df_proc, ipress_decl, periodo)
-            ruta_b1 = os.path.join(
-                carpeta_salida, f"{ipress_decl}_{anio}_{mes}_TAB1.txt"
-            )
-            with open(ruta_b1, "w", encoding="ansi", errors="replace") as f:
-                f.write("\n".join(lineas_b1))
-
-            # 3. Tabla B2 (Sufijo TAB2)
             lineas_b2, total_j00x = procesar_tabla_b2(df_proc, ipress_decl, periodo)
-            ruta_b2 = os.path.join(
-                carpeta_salida, f"{ipress_decl}_{anio}_{mes}_TAB2.txt"
-            )
-            with open(ruta_b2, "w", encoding="ansi", errors="replace") as f:
-                f.write("\n".join(lineas_b2))
-
-            # 4. Tabla C1 (Sufijo TAC1)
-            filtrar_ups = not self.var_modo_emergencia.get()
-            lineas_c1 = procesar_tabla_c1(
-                df_proc,
-                ipress_decl,
-                periodo,
-                solo_filtrar_ups=filtrar_ups,
-                lista_todos_renipress=codigos_validos,
-            )
-            ruta_c1 = os.path.join(
-                carpeta_salida, f"{ipress_decl}_{anio}_{mes}_TAC1.txt"
-            )
-            with open(ruta_c1, "w", encoding="ansi", errors="replace") as f:
-                f.write("\n".join(lineas_c1))
-
-            # 5. Tabla C2 (Sufijo TAC2)
-            lineas_c2 = procesar_tabla_c2(
-                df_proc,
-                ipress_decl,
-                periodo,
-                solo_filtrar_ups=filtrar_ups,
-            )
-            ruta_c2 = os.path.join(
-                carpeta_salida, f"{ipress_decl}_{anio}_{mes}_TAC2.txt"
-            )
-            with open(ruta_c2, "w", encoding="ansi", errors="replace") as f:
-                f.write("\n".join(lineas_c2))
-
-            # 6. Tabla D1 (Sufijo TAD1)
+            
+            filtrar_ups = not var_modo_emergencia
+            lineas_c1 = procesar_tabla_c1(df_proc, ipress_decl, periodo, solo_filtrar_ups=filtrar_ups, lista_todos_renipress=codigos_validos)
+            lineas_c2 = procesar_tabla_c2(df_proc, ipress_decl, periodo, solo_filtrar_ups=filtrar_ups)
             lineas_d1 = procesar_tabla_d1(codigos_validos, ipress_decl, periodo)
-            ruta_d1 = os.path.join(
-                carpeta_salida, f"{ipress_decl}_{anio}_{mes}_TAD1.txt"
-            )
-            with open(ruta_d1, "w", encoding="ansi", errors="replace") as f:
-                f.write("\n".join(lineas_d1))
-
-            # 7. Tabla D2 (Sufijo TAD2)
             lineas_d2 = procesar_tabla_d2(codigos_validos, ipress_decl, periodo)
-            ruta_d2 = os.path.join(
-                carpeta_salida, f"{ipress_decl}_{anio}_{mes}_TAD2.txt"
-            )
-            with open(ruta_d2, "w", encoding="ansi", errors="replace") as f:
-                f.write("\n".join(lineas_d2))
+            lineas_e = procesar_tabla_e(codigos_validos, ipress_decl, periodo, df_principal=df, file_seem=archivo_seem)
 
-            # 8. Tabla E (Sufijo TAE0)
-            lineas_e = procesar_tabla_e(codigos_validos, ipress_decl, periodo, df_principal=df, ruta_seem=ruta_seem)
-            ruta_e = os.path.join(
-                carpeta_salida, f"{ipress_decl}_{anio}_{mes}_TAE0.txt"
-            )
-            with open(ruta_e, "w", encoding="ansi", errors="replace") as f:
-                f.write("\n".join(lineas_e))
+            st.success("✅ ¡Paquete de tramas generado exitosamente!")
 
-            self._actualizar_previsualizaciones(
-                lineas_a, lineas_b1, lineas_b2, lineas_c1, lineas_c2, lineas_d1, lineas_d2, lineas_e
-            )
+            # Métricas de resumen
+            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+            col_m1.metric("Tabla A (Recursos)", f"{len(lineas_a)} reg")
+            col_m2.metric("Tabla B1 (Atenciones)", f"{len(lineas_b1)} lin")
+            col_m3.metric("Tabla B2 (Morbilidad)", f"{len(lineas_b2)} lin")
+            col_m4.metric("Tabla E (Partos)", f"{len(lineas_e)} lin")
 
-            messagebox.showinfo(
-                "¡Generación Exitosa!",
-                f"Archivos generados en formato ANSI en:\n{carpeta_salida}\n\n"
-                f"• Tabla A: {len(lineas_a)} registros\n"
-                f"• Tabla B1: {len(lineas_b1)} líneas\n"
-                f"• Tabla B2: {len(lineas_b2)} líneas\n"
-                f"• Tabla C1: {len(lineas_c1)} líneas\n"
-                f"• Tabla C2: {len(lineas_c2)} líneas\n"
-                f"• Tabla D1: {len(lineas_d1)} líneas\n"
-                f"• Tabla D2: {len(lineas_d2)} líneas\n"
-                f"• Tabla E: {len(lineas_e)} líneas",
-            )
+            # 3. Visualizador y Descargas en Pestañas
+            st.markdown("### 📋 Previsualización y Descarga de Tramas")
+            t_a, t_b1, t_b2, t_c1, t_c2, t_d1, t_d2, t_e = st.tabs([
+                "Tabla A", "Tabla B1", "Tabla B2", "Tabla C1", "Tabla C2", "Tabla D1", "Tabla D2", "Tabla E"
+            ])
+
+            data_tabs = [
+                (t_a, lineas_a, f"{ipress_decl}_{anio}_{mes}_TAA0.txt"),
+                (t_b1, lineas_b1, f"{ipress_decl}_{anio}_{mes}_TAB1.txt"),
+                (t_b2, lineas_b2, f"{ipress_decl}_{anio}_{mes}_TAB2.txt"),
+                (t_c1, lineas_c1, f"{ipress_decl}_{anio}_{mes}_TAC1.txt"),
+                (t_c2, lineas_c2, f"{ipress_decl}_{anio}_{mes}_TAC2.txt"),
+                (t_d1, lineas_d1, f"{ipress_decl}_{anio}_{mes}_TAD1.txt"),
+                (t_d2, lineas_d2, f"{ipress_decl}_{anio}_{mes}_TAD2.txt"),
+                (t_e, lineas_e, f"{ipress_decl}_{anio}_{mes}_TAE0.txt"),
+            ]
+
+            for tab_obj, lineas, nombre_archivo in data_tabs:
+                with tab_obj:
+                    contenido_texto = "\n".join(lineas)
+                    st.download_button(
+                        label=f"📥 Descargar {nombre_archivo}",
+                        data=contenido_texto,
+                        file_name=nombre_archivo,
+                        mime="text/plain"
+                    )
+                    st.text_area("Vista previa (primeros 100 registros):", value="\n".join(lineas[:100]), height=300)
 
         except Exception as e:
-            messagebox.showerror(
-                "Error técnico", f"No se pudo procesar el paquete:\n{str(e)}"
-            )
-
-    def _actualizar_previsualizaciones(self, a, b1, b2, c1, c2, d1, d2, e):
-        for widget, lista, in zip(
-            [
-                self.txt_prev_a,
-                self.txt_prev_b1,
-                self.txt_prev_b2,
-                self.txt_prev_c1,
-                self.txt_prev_c2,
-                self.txt_prev_d1,
-                self.txt_prev_d2,
-                self.txt_prev_e,
-            ],
-            [a, b1, b2, c1, c2, d1, d2, e],
-        ):
-            widget.delete("1.0", "end")
-            widget.insert("1.0", "\n".join(lista[:100]))
+            st.error(f"❌ Error técnico al procesar el archivo:\n{str(e)}")
 
 
 if __name__ == "__main__":
-    app = ConsolaSetiSusalud() 
-    app.mainloop()
+    main()
