@@ -632,11 +632,10 @@ def main():
     st.sidebar.markdown("**SUSALUD - Módulo de Tramas**")
     st.sidebar.markdown("---")
     st.sidebar.info(
-        "Elaborado por el Ingº Sistemas\n"
-        "Carlos Sauñe Yupanqui\n"
+        "Elaborado por:\n
+        **Ingº Carlos Sauñe Yupanqui**\n"
         "CIP 209420\n"
-        "Estado: En línea\n"
-        "Versión 2026.1"
+        "Versión: 2026.1 - En Linea"
     )
 
     # 1. Parámetros del Envío
