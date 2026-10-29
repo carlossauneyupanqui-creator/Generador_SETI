@@ -47,7 +47,7 @@ CAMPOS_RECURSOS = [
 ]
 
 # =========================================================
-# FUNCIONES BÁSICAS Y MAPEO DE DATOS (MIGRACIÓN EXACTA)
+# FUNCIONES BÁSICAS Y MAPEO DE DATOS
 # =========================================================
 def limpiar_codigo_renipress(valor):
     if pd.isna(valor):
@@ -111,10 +111,8 @@ def estandarizar_cie10(codigo):
     if pd.isna(codigo):
         return ""
     c = str(codigo).strip().upper().replace(".", "")
-    
     if c.startswith("Z298"):
         return "Z29.8"
-        
     if len(c) == 4 and re.match(r"^[A-Z][0-9A-Z]{3}$", c):
         return f"{c[:3]}.{c[3]}"
     elif len(c) == 5 and re.match(r"^[A-Z][0-9A-Z]{4}$", c):
@@ -189,7 +187,7 @@ def cargar_y_normalizar_excel(uploaded_file):
 
 
 # =========================================================
-# LÓGICA DE GENERACIÓN DE TRAMAS (FORMATO SUSALUD REGULARIZADO)
+# LÓGICA DE GENERACIÓN DE TRAMAS
 # =========================================================
 def procesar_tabla_a(codigos_renipress_lista, ipress_matriz, periodo):
     lineas_a = []
@@ -497,7 +495,7 @@ def abrir_modal_tabla_a(codigos_validos):
 # =========================================================
 def main():
     # -----------------------------------------------------
-    # BARRA LATERAL CON Mantenimiento de créditos en la base
+    # BARRA LATERAL CON DISEÑO IDÉntICO DE ESCRITORIO
     # -----------------------------------------------------
     st.sidebar.markdown("### ⚙️ **SETI-PRES**")
     st.sidebar.markdown("**SUSALUD - Módulo de Tramas**")
@@ -512,7 +510,7 @@ def main():
         else:
             st.sidebar.error("Ingrese al menos un código RENIPRESS.")
 
-    # CSS para anclar créditos en la base inferior
+    # CSS para forzar el pie de página exactamente en la base inferior con diseño exacto
     st.sidebar.markdown(
         """
         <style>
@@ -526,20 +524,36 @@ def main():
                 margin-top: auto;
                 padding-bottom: 20px;
             }
+            .custom-card {
+                background-color: #1d4ed8;
+                color: #ffffff;
+                padding: 12px;
+                border-radius: 8px;
+                text-align: center;
+                font-size: 13px;
+                line-height: 1.5;
+                font-family: sans-serif;
+            }
         </style>
         """,
         unsafe_allow_html=True
     )
 
-    st.sidebar.markdown('<div class="sidebar-footer">', unsafe_allow_html=True)
-    st.sidebar.info(
-        "Elaborado por el Ingº Sistemas\n"
-        "**Carlos Sauñe Yupanqui**\n"
-        "CIP 209420\n"
-        "Estado: En línea\n"
-        "Versión 2026.1"
+    # Tarjeta idéntica a la versión de escritorio
+    st.sidebar.markdown(
+        """
+        <div class="sidebar-footer">
+            <div class="custom-card">
+                Elaborado por el Ingº Sistemas<br>
+                <b>Carlos Sauñe Yupanqui</b><br>
+                CIP 209420<br>
+                Estado: En línea<br>
+                Versión 2026.1
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
-    st.sidebar.markdown('</div>', unsafe_allow_html=True)
 
     # -----------------------------------------------------
     # PANEL PRINCIPAL
@@ -597,7 +611,6 @@ def main():
                     df_proc["RENIPRESS_STR"] = df_proc["RENIPRESS"].apply(limpiar_codigo_renipress)
                     df_proc = df_proc[df_proc["RENIPRESS_STR"].isin(set_codigos_validos)]
 
-                    # FILTRO ESTRICTO: Diagnósticos Definitivos (que inician con 'D')
                     df_proc = df_proc[df_proc["TIPODX"].astype(str).str.strip().str.upper().str.startswith("D")]
 
                     df_proc["SEXO_PROC"] = df_proc["SEXO"].apply(normalizar_sexo)
@@ -614,7 +627,6 @@ def main():
                     anio = periodo[:4]
                     mes = periodo[4:]
 
-                    # GENERACIÓN DE TRAMAS
                     lineas_a = procesar_tabla_a(codigos_validos, ipress_decl, periodo)
                     lineas_b1 = procesar_tabla_b1(df_proc, ipress_decl, periodo)
                     lineas_b2, total_j00x = procesar_tabla_b2(df_proc, ipress_decl, periodo)
@@ -627,7 +639,6 @@ def main():
                     lineas_d2 = procesar_tabla_d2(codigos_validos, ipress_decl, periodo)
                     lineas_e = procesar_tabla_e(codigos_validos, ipress_decl, periodo, df_principal=df, uploaded_seem=archivo_seem)
 
-                    # ALMACENAR EN SESSION STATE PARA MOSTRAR Y DESCARGAR
                     st.session_state.tramas_resultado = {
                         f"{ipress_decl}_{anio}_{mes}_TAA0.txt": "\n".join(lineas_a),
                         f"{ipress_decl}_{anio}_{mes}_TAB1.txt": "\n".join(lineas_b1),
@@ -649,7 +660,6 @@ def main():
         st.markdown("---")
         st.markdown("### 3. Previsualización y Descarga de Resultados")
 
-        # Generación de ZIP en memoria para descarga directa
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for filename, content in st.session_state.tramas_resultado.items():
